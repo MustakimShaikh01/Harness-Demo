@@ -6,5 +6,6 @@ description = "Verify BankGuard audit log SHA-256 hash chains"
 license = "MIT"
 
 [dependencies]
+serde = "1"
 serde_json = "1"
 sha2 = "0.10"

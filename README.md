@@ -284,7 +284,7 @@ bankguard/
 - Services revalidate the exact approval fingerprint, expiry, ownership, balance and policies before execution.
 - Money uses `Decimal`; JSON encodes amounts as decimal strings.
 - Writes use locks, temporary files, `fsync`, atomic replacement and a previous-file backup.
-- Audit events are linked by SHA-256 hashes. Verify the log with `cargo run --manifest-path rust/audit-verifier/Cargo.toml -- verify banking_agent/data/audit_logs.json`; this detects edits but is not tamper-proof without an externally trusted checkpoint.
+- Audit events are linked by SHA-256 hashes. Run `cargo run --manifest-path rust/audit-verifier/Cargo.toml -- verify banking_agent/data/audit_logs.json` to check the chain. For optional tail-truncation detection, pass a real, previously saved `--expected-head` hash; see [audit and observability](docs/OBSERVABILITY.md). A fully rewritten log is still not tamper-proof without an external signature or anchor.
 - Transfer/bill journals store redo snapshots. After an interrupted operation, run `python scripts/recover_demo_data.py` to safely reapply approved prepared entries; this does **not** make JSON files a transactional database.
 - Local JSON storage is for a single-user demo. It is not suitable for concurrent production workloads, multiple hosts, regulatory use or real financial data.
 
