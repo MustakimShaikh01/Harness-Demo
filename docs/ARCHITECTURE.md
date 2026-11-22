@@ -18,6 +18,7 @@ flowchart TB
     SERVICE --> REPO[Repositories]
     REPO --> JSON[Atomic JSON files]
     SERVICE --> AUDIT[Audit event and log]
+    AUDIT -. offline integrity check .-> RUST[Rust audit verifier]
     JSON --> SERVICE
     SERVICE --> FT
     FT --> LLM
@@ -53,10 +54,14 @@ The only inference service is Gemini. The agent asks for minimal information and
 4. An idempotency request and approval record are persisted. The approval fingerprint covers source, beneficiary, amount, currency and request ID.
 5. `execute_confirmed_transfer` is wrapped in ADK `FunctionTool(require_confirmation=True)`. ADK Web asks the user to confirm this execution call.
 6. On confirmation, the service checks the approval fingerprint, expiry, replay state, identity, current balance and policies again.
-7. A journal entry is prepared; balances and paired transaction entries are written; the journal is marked committed.
+7. A write-ahead entry containing intended balances and paired transactions is prepared; data files are updated, idempotency/approval states finalized, and the journal marked committed.
 8. The result and audit event are returned. The agent reports success only if the structured result says it completed.
 
 If the user rejects the ADK confirmation, the tool body is not executed. Approval records are short-lived and cannot be replayed. A conversational “yes” does not replace the ADK confirmation action.
+
+## Beneficiary registration
+
+The `add_beneficiary` function is also wrapped by `FunctionTool(require_confirmation=True)`. After the ADK UI confirmation, the service validates the destination account, requires it to be active and outside the current customer's own accounts, and prevents duplicate registrations.
 
 ## Bill payment workflow
 
@@ -64,9 +69,13 @@ Bill details bind the payment to the customer's specific owned account. The requ
 
 ## Persistence
 
-`JsonStore` uses a per-file OS lock, temporary file, `fsync`, atomic replace and a previous-version backup. A separate application lock serializes transfer/bill workflows. Journals expose incomplete multi-file updates for manual inspection. They do not automatically reconcile a crash and do not provide full database transactions.
+`JsonStore` uses a per-file OS lock, temporary file, `fsync`, atomic replace and a previous-version backup. A separate application lock serializes transfer/bill workflows. Journals store the complete intended state before financial files change. If a process stops with a `prepared` entry, run `python scripts/recover_demo_data.py`: it validates approval and idempotency records, replays the exact intended snapshot (safe to repeat), consumes the approval, and marks the journal committed. This is redo recovery for the local demo, not general database transaction support.
 
 For a demo, the JSON files are the business-data persistence layer. ADK Web is started with its local session persistence disabled; ADK conversation/session context is temporary in memory.
+
+## Audit integrity verifier
+
+The Python audit logger chains operation events with SHA-256 hashes. The standalone Rust CLI reads the JSON audit file and verifies each event hash and its link to the previous event; it is an offline integrity check, not part of request execution or a banking decision. See [audit and observability](OBSERVABILITY.md) for the command, canonicalization format and trust limitations. A local hash chain can be rewritten by someone who can replace the whole file, so it is not a tamper-proof compliance record.
 
 ## Session and identity boundary
 

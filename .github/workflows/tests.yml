@@ -17,3 +17,28 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -r requirements.txt
       - run: pytest -q
+  rust-audit-verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - run: cargo fmt --manifest-path rust/audit-verifier/Cargo.toml -- --check
+      - run: cargo test --manifest-path rust/audit-verifier/Cargo.toml --locked
+      - name: Verify Python-generated audit events
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from banking_agent.harness.observability import AuditLogger
+          from banking_agent.storage.json_store import JsonStore
+
+          store = JsonStore(Path(os.environ["RUNNER_TEMP"]) / "bankguard-audit-test")
+          audit = AuditLogger(store)
+          audit.record({"operation": "balance_lookup", "account_id": "acct_demo_001"})
+          audit.record({"operation": "transfer", "result": "completed", "label": "demo - नमूना"})
+          PY
+          cargo run --quiet --locked --manifest-path rust/audit-verifier/Cargo.toml -- verify "${{ runner.temp }}/bankguard-audit-test/audit_logs.json"

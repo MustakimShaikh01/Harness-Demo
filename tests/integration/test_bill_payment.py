@@ -7,6 +7,7 @@ from banking_agent.services.bill_service import BillService
 from banking_agent.storage.json_store import JsonStore
 from banking_agent.storage.repositories.account_repository import AccountRepository
 from banking_agent.storage.repositories.approval_repository import ApprovalRepository
+from banking_agent.harness.idempotency import IdempotencyManager
 import banking_agent.tools.bill_tools as bill_tools
 
 
@@ -32,6 +33,7 @@ def _configure_bill_tools(monkeypatch, tmp_path):
     monkeypatch.setattr(bill_tools, "_service", BillService(store, auth))
     monkeypatch.setattr(bill_tools, "_approval", ApprovalManager(ApprovalRepository(store), 300))
     monkeypatch.setattr(bill_tools, "_accounts", AccountRepository(store))
+    monkeypatch.setattr(bill_tools, "_idempotency", IdempotencyManager(store))
     monkeypatch.setattr(bill_tools, "_audit", AuditLogger(store))
     return store
 

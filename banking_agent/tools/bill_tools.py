@@ -9,10 +9,12 @@ from ..harness.authorization import AuthorizationEngine
 from ..harness.error_handler import error_contract
 from ..harness.observability import AuditLogger
 from ..harness.validation import ToolValidationError, account_id, positive_money
+from ..harness.idempotency import IdempotencyManager
 from ..harness.policy_engine import PolicyEngine
 from ..services.bill_service import BillService
 from ..storage.file_lock import file_lock
 from ..storage.json_store import JsonStore
+from ..storage.recovery import recover_pending_operations
 from ..storage.repositories.account_repository import AccountRepository
 from ..storage.repositories.approval_repository import ApprovalRepository
 
@@ -22,6 +24,7 @@ _service = BillService(_store, _auth)
 _policy = PolicyEngine(Path(__file__).resolve().parents[1] / "config" / "policies.yaml")
 _approval = ApprovalManager(ApprovalRepository(_store), int(_policy.policies["approval"]["ttl_seconds"]))
 _accounts = AccountRepository(_store)
+_idempotency = IdempotencyManager(_store)
 _audit = AuditLogger(_store)
 
 
@@ -73,6 +76,7 @@ def request_bill_payment(bill_id: str) -> dict:
 def execute_confirmed_bill_payment(approval_id: str, bill_id: str) -> dict:
     """Pay one pending bill after ADK UI confirmation and matching approval."""
     try:
+        recover_pending_operations(_store)
         with file_lock(_store.data_dir / ".bankguard.lock"):
             bill = _service.get(bill_id)
             if bill.get("status") != "pending":
@@ -124,11 +128,26 @@ def execute_confirmed_bill_payment(approval_id: str, bill_id: str) -> dict:
                     row["paid_at"] = paid_at
 
             journal = _store.read("bill_payment_journal.json", [])
-            journal.append({"transaction_id": transaction_id, "bill_id": bill_id, "status": "prepared", "timestamp": paid_at})
+            _idempotency.reserve(bill_id, "bill_payment")
+            idem_row = _idempotency.get(bill_id)
+            if idem_row and idem_row.get("status") == "completed":
+                raise ToolValidationError("DUPLICATE_REQUEST", "This bill payment was already completed")
+            journal.append({
+                "transaction_id": transaction_id,
+                "bill_id": bill_id,
+                "approval_id": approval_id,
+                "status": "prepared",
+                "accounts_after": accounts,
+                "transactions_after": transactions,
+                "bills_after": bills,
+                "timestamp": paid_at,
+            })
             _store.write("bill_payment_journal.json", journal)
             _store.write("accounts.json", accounts)
             _store.write("transactions.json", transactions)
             _store.write("bills.json", bills)
+            _idempotency.complete(bill_id, {"transaction_id": transaction_id})
+            _approval.consume(approval_id)
             journal[-1]["status"] = "committed"
             _store.write("bill_payment_journal.json", journal)
 

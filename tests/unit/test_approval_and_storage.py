@@ -2,6 +2,7 @@ import pytest
 
 from banking_agent.harness.approval_manager import ApprovalManager
 from banking_agent.harness.validation import ToolValidationError, positive_money
+from banking_agent.harness.error_handler import error_contract
 from banking_agent.storage.json_store import CorruptedJsonError, JsonStore
 from banking_agent.storage.repositories.approval_repository import ApprovalRepository
 
@@ -50,8 +51,9 @@ def test_json_store_reports_malformed_json(tmp_path):
     store = JsonStore(tmp_path)
     (tmp_path / "accounts.json").write_text("{broken", encoding="utf-8")
 
-    with pytest.raises(CorruptedJsonError):
+    with pytest.raises(CorruptedJsonError) as error:
         store.read("accounts.json")
+    assert error_contract(error.value)["error"]["category"] == "CORRUPTED_JSON"
 
 
 def test_money_validation_rejects_excess_precision():

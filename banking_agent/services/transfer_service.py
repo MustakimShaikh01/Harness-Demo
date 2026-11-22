@@ -10,6 +10,7 @@ from ..harness.approval_manager import ApprovalManager
 from ..harness.idempotency import IdempotencyManager
 from ..storage.json_store import JsonStore
 from ..storage.file_lock import file_lock
+from ..storage.recovery import recover_pending_operations
 
 class TransferService:
     def __init__(self, store: JsonStore, policy: PolicyEngine, auth: AuthorizationEngine,
@@ -17,6 +18,7 @@ class TransferService:
         self.store=store; self.policy=policy; self.auth=auth; self.approval=approval; self.idem=idem
 
     def request(self, source_account_id: str, beneficiary_id: str, amount: Decimal, request_id: str=None) -> dict:
+        recover_pending_operations(self.store)
         lock_path=self.store.data_dir/'.bankguard.lock'
         with file_lock(lock_path):
             accounts=self.store.read("accounts.json",[])
@@ -51,6 +53,7 @@ class TransferService:
                     "transaction_request_id":rid,"details":details}
 
     def execute(self, approval_id: str, request_id: str, source_account_id: str, beneficiary_id: str, amount: Decimal) -> dict:
+        recover_pending_operations(self.store)
         lock_path=self.store.data_dir/'.bankguard.lock'
         with file_lock(lock_path):
             exact={"type":"transfer","source_account_id":source_account_id,"beneficiary_id":beneficiary_id,
@@ -75,18 +78,29 @@ class TransferService:
             destination["balance"]=((Decimal(str(destination["balance"]))+amount).quantize(Decimal("0.01"))).__format__(".2f")
             transaction_id=str(uuid4())
             now=datetime.now(timezone.utc).isoformat()
-            # Write-ahead journal makes a crash recoverable; account and transaction commits remain atomic per files.
-            journal=self.store.read("transfer_journal.json",[])
-            journal.append({"status":"prepared","transaction_id":transaction_id,"request_id":request_id,"details":exact,"timestamp":now})
-            self.store.write("transfer_journal.json",journal)
-            self.store.write("accounts.json",accounts)
             txs.append({"transaction_id":transaction_id,"account_id":source_account_id,"from_account":source_account_id,
                         "to_account":destination["account_id"],"beneficiary_id":beneficiary_id,"amount":format(amount,'.2f'),
                         "currency":"INR","type":"debit","status":"completed","date":now,"description":"Simulated transfer"})
             txs.append({"transaction_id":transaction_id,"account_id":destination["account_id"],"from_account":source_account_id,
                         "to_account":destination["account_id"],"beneficiary_id":beneficiary_id,"amount":format(amount,'.2f'),
                         "currency":"INR","type":"credit","status":"completed","date":now,"description":"Simulated transfer received"})
+            # Persist the complete intended state before updating any financial data file.
+            journal=self.store.read("transfer_journal.json",[])
+            journal.append({
+                "status":"prepared",
+                "operation":"transfer",
+                "transaction_id":transaction_id,
+                "request_id":request_id,
+                "approval_id":approval_id,
+                "details":exact,
+                "accounts_after":accounts,
+                "transactions_after":txs,
+                "timestamp":now,
+            })
+            self.store.write("transfer_journal.json",journal)
+            self.store.write("accounts.json",accounts)
             self.store.write("transactions.json",txs)
-            journal[-1]["status"]="committed"; self.store.write("transfer_journal.json",journal)
             self.idem.complete(request_id,{"transaction_id":transaction_id})
+            self.approval.consume(approval_id)
+            journal[-1]["status"]="committed"; self.store.write("transfer_journal.json",journal)
             return {"success":True,"status":"completed","transaction_id":transaction_id,"amount":format(amount,'.2f'),"currency":"INR"}

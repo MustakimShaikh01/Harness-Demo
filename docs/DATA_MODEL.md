@@ -12,9 +12,9 @@ The application has no application database. Each data file is a JSON array; mon
 | `bills.json` | Simulated bills | `bill_id`, `customer_id`, `account_id`, `amount`, `due_date`, `status` |
 | `approvals.json` | Pending/consumed human approvals | `approval_id`, `transaction_request_id`, `fingerprint`, `status`, `expires_at` |
 | `idempotency.json` | Financial request replay protection | `request_id`, `operation`, `status`, `result` |
-| `audit_logs.json` | Structured operation events | `timestamp`, `request_id`, `tool`, `operation`, `execution_result` |
-| `transfer_journal.json` | Transfer commit progress | `transaction_id`, `request_id`, `status`, `timestamp` |
-| `bill_payment_journal.json` | Bill-payment commit progress | `transaction_id`, `bill_id`, `status`, `timestamp` |
+| `audit_logs.json` | Structured operation events linked by a SHA-256 hash chain | `timestamp`, `request_id`, `tool`, `operation`, `execution_result`, `previous_hash`, `event_hash` |
+| `transfer_journal.json` | Transfer commit progress and redo snapshot | `transaction_id`, `request_id`, `approval_id`, `status`, `accounts_after`, `transactions_after` |
+| `bill_payment_journal.json` | Bill-payment commit progress and redo snapshot | `transaction_id`, `bill_id`, `approval_id`, `status`, `accounts_after`, `transactions_after`, `bills_after` |
 
 ## Relationships
 

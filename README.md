@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![Google ADK](https://img.shields.io/badge/Agent%20framework-Google%20ADK-4285F4?logo=google)
 ![Storage](https://img.shields.io/badge/Storage-JSON%20files-6B7280)
-![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest)
+![Tests](https://img.shields.io/github/actions/workflow/status/MustakimShaikh01/Harness-Demo/tests.yml?branch=main&label=tests)
 ![Status](https://img.shields.io/badge/status-demo%20project-orange)
 
 **All accounts and banking activity are fictional. No real money is moved.** This project is for learning and demonstration, not production banking or financial advice.
@@ -14,10 +14,12 @@
 
 - Google ADK `LlmAgent` with Gemini and function tools.
 - Practical read tools for accounts, balances, transaction history/search, beneficiaries and bills.
+- Beneficiary registration with account validation and duplicate prevention.
 - Sensitive operations split into request and execution stages.
 - ADK Web confirmation prompts on transfer and bill-payment execution calls.
 - Independent Python authorization, validation and policy checks.
 - Decimal-based INR calculations, idempotency records, JSON persistence and audit events.
+- A small Rust CLI that independently verifies the Python audit log's SHA-256 hash chain.
 - Local unit, integration and security tests that do not call Gemini.
 
 ## Architecture
@@ -37,6 +39,7 @@ flowchart LR
     AP --> S
     S --> J[JSON Store and Journal]
     S --> O[Audit Events and Logs]
+    O -. integrity check .-> RV[Rust Audit Verifier]
     J --> T
     O --> T
     T --> A
@@ -137,6 +140,8 @@ erDiagram
         string timestamp_utc
         string operation
         string result
+        string previous_hash
+        string event_hash
     }
 ```
 
@@ -150,6 +155,7 @@ See [architecture and persistence notes](docs/ARCHITECTURE.md) and [JSON data mo
 | `get_account` / `get_account_summary` | Read owned-account details | Read-only |
 | `get_transaction_history` / `search_transaction` | Read/filter owned-account activity | Read-only |
 | `list_beneficiaries` | List active customer's registered beneficiaries | Read-only |
+| `add_beneficiary` | Register an active demo account and prevent duplicates | Sensitive; ADK confirmation |
 | `list_pending_bills` / `get_bill_details` | Read the active customer's bills | Read-only |
 | `assess_transfer_risk` | Return deterministic risk indicators | Read-only |
 | `request_transfer` | Validate request and create pending approval | No money moved |
@@ -164,6 +170,7 @@ See [architecture and persistence notes](docs/ARCHITECTURE.md) and [JSON data mo
 - Python 3.11+
 - A Google Gemini API key for live agent interaction
 - macOS or Linux with Python 3.11+
+- Rust stable/Cargo only if you want to build and run the optional audit verifier
 
 ### 2. Install
 
@@ -213,6 +220,7 @@ The default simulated customer is `cust_demo_001`, selected through trusted app 
 | Savings account | `acct_demo_001` | ₹100,000.00 |
 | Checking account | `acct_demo_002` | ₹25,000.00 |
 | Other demo customer account | `acct_demo_003` | Cross-customer access is denied |
+| Additional recipient account | `acct_demo_004` | Use to demonstrate adding a beneficiary |
 | Beneficiary | `ben_demo_001` | Family Savings, linked to `acct_demo_002` |
 | Pending bill | `bill_demo_001` | Metro Electric, ₹1,850.00, pays from `acct_demo_001` |
 
@@ -220,7 +228,7 @@ This identity is a **demo boundary**, not login, authentication, MFA or producti
 
 ## Cost-conscious testing
 
-Local tests do not call the model or incur inference charges:
+The evaluation runner executes the scenario-to-test mappings in `banking_agent/evaluation/test_cases.json` and reports individual outcomes. Local tests do not call the model or incur inference charges:
 
 ```bash
 pytest -q
@@ -264,6 +272,7 @@ bankguard/
 │   ├── data/                    # Fictional seed data and runtime JSON
 │   └── evaluation/              # Deterministic scenario catalog/runner
 ├── docs/                        # Architecture, security, tests, demo guide
+├── rust/audit-verifier/         # Optional Rust CLI for audit-chain verification
 ├── scripts/                     # Seed/reset, checks, optional live smoke test
 └── tests/                       # Unit, integration, security and evaluation
 ```
@@ -275,7 +284,8 @@ bankguard/
 - Services revalidate the exact approval fingerprint, expiry, ownership, balance and policies before execution.
 - Money uses `Decimal`; JSON encodes amounts as decimal strings.
 - Writes use locks, temporary files, `fsync`, atomic replacement and a previous-file backup.
-- Transfer/bill journals make incomplete multi-file operations visible for manual reconciliation; they do **not** make JSON files a transactional database or automatically repair crashes.
+- Audit events are linked by SHA-256 hashes. Verify the log with `cargo run --manifest-path rust/audit-verifier/Cargo.toml -- verify banking_agent/data/audit_logs.json`; this detects edits but is not tamper-proof without an externally trusted checkpoint.
+- Transfer/bill journals store redo snapshots. After an interrupted operation, run `python scripts/recover_demo_data.py` to safely reapply approved prepared entries; this does **not** make JSON files a transactional database.
 - Local JSON storage is for a single-user demo. It is not suitable for concurrent production workloads, multiple hosts, regulatory use or real financial data.
 
 Read [security assumptions](docs/SECURITY.md) before demonstrating sensitive workflows.
@@ -284,6 +294,7 @@ Read [security assumptions](docs/SECURITY.md) before demonstrating sensitive wor
 
 - [Architecture and flow](docs/ARCHITECTURE.md)
 - [Data model](docs/DATA_MODEL.md)
+- [Audit and observability examples](docs/OBSERVABILITY.md)
 - [Harness engineering](docs/HARNESS_ENGINEERING.md)
 - [Threat model and demo limitations](docs/SECURITY.md)
 - [Test and evaluation guide](docs/TESTING.md)
@@ -292,5 +303,3 @@ Read [security assumptions](docs/SECURITY.md) before demonstrating sensitive wor
 ## Roadmap / honest scope
 
 This is a deliberately constrained simulated-banking harness. It does not implement production login, MFA, real beneficiary verification, multi-process database transactions, a live fraud model, an external bank API, or real bill settlement. Additions should preserve the “LLM proposes, deterministic harness decides” boundary.
-
-# Harness-Demo

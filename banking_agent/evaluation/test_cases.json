@@ -1,24 +1,134 @@
 [
-{"id":"EV-001","scenario":"successful_balance_lookup","expected":"success"},
-{"id":"EV-002","scenario":"unknown_account","expected":"NOT_FOUND"},
-{"id":"EV-003","scenario":"transaction_history","expected":"success"},
-{"id":"EV-004","scenario":"valid_beneficiary","expected":"success"},
-{"id":"EV-005","scenario":"successful_transfer","expected":"completed"},
-{"id":"EV-006","scenario":"insufficient_balance","expected":"INSUFFICIENT_FUNDS"},
-{"id":"EV-007","scenario":"above_maximum","expected":"ABOVE_MAXIMUM"},
-{"id":"EV-008","scenario":"above_daily_limit","expected":"DAILY_LIMIT_EXCEEDED"},
-{"id":"EV-009","scenario":"unknown_beneficiary","expected":"PERMISSION_DENIED"},
-{"id":"EV-010","scenario":"inactive_account","expected":"SOURCE_ACCOUNT_INACTIVE"},
-{"id":"EV-011","scenario":"missing_confirmation","expected":"approval_required"},
-{"id":"EV-012","scenario":"rejected_confirmation","expected":"APPROVAL_REPLAY"},
-{"id":"EV-013","scenario":"expired_approval","expected":"APPROVAL_EXPIRED"},
-{"id":"EV-014","scenario":"modified_details","expected":"APPROVAL_MODIFIED"},
-{"id":"EV-015","scenario":"duplicate_request","expected":"DUPLICATE_REQUEST"},
-{"id":"EV-016","scenario":"cross_customer_access","expected":"PERMISSION_DENIED"},
-{"id":"EV-017","scenario":"prompt_injection","expected":"policy_refusal"},
-{"id":"EV-018","scenario":"hallucinated_success","expected":"not_allowed"},
-{"id":"EV-019","scenario":"corrupted_json","expected":"CORRUPTED_JSON"},
-{"id":"EV-020","scenario":"interrupted_persistence","expected":"DATA_ERROR"},
-{"id":"EV-021","scenario":"repeated_bill_payment","expected":"APPROVAL_REPLAY"},
-{"id":"EV-022","scenario":"unauthorized_tool","expected":"PERMISSION_DENIED"}
+  {
+    "id": "EV-001",
+    "scenario": "successful_balance_lookup",
+    "expected": "success",
+    "test_nodeid": "tests/integration/test_read_tools.py::test_account_tools_return_account_facts_without_model_inference"
+  },
+  {
+    "id": "EV-002",
+    "scenario": "unknown_account_and_cross_customer_read",
+    "expected": "NOT_FOUND and PERMISSION_DENIED",
+    "test_nodeid": "tests/integration/test_read_tools.py::test_account_and_transaction_tools_reject_unknown_and_foreign_accounts"
+  },
+  {
+    "id": "EV-003",
+    "scenario": "transaction_history_date_and_type_filter",
+    "expected": "matching transaction only",
+    "test_nodeid": "tests/integration/test_read_tools.py::test_transaction_history_filters_by_date_and_type"
+  },
+  {
+    "id": "EV-004",
+    "scenario": "add_valid_beneficiary",
+    "expected": "success",
+    "test_nodeid": "tests/integration/test_beneficiary_management.py::test_add_beneficiary_for_active_account"
+  },
+  {
+    "id": "EV-005",
+    "scenario": "confirmed_simulated_transfer",
+    "expected": "paired transactions and both balances updated",
+    "test_nodeid": "tests/integration/test_transfer.py::test_confirmed_transfer_updates_both_accounts_and_records_pair"
+  },
+  {
+    "id": "EV-006",
+    "scenario": "insufficient_balance",
+    "expected": "INSUFFICIENT_FUNDS",
+    "test_nodeid": "tests/integration/test_transfer.py::test_insufficient_funds_are_rejected"
+  },
+  {
+    "id": "EV-007",
+    "scenario": "transfer_above_maximum",
+    "expected": "ABOVE_MAXIMUM",
+    "test_nodeid": "tests/integration/test_transfer.py::test_transfer_limit_denials_are_deterministic[amount0-ABOVE_MAXIMUM]"
+  },
+  {
+    "id": "EV-008",
+    "scenario": "transfer_above_daily_limit",
+    "expected": "DAILY_LIMIT_EXCEEDED",
+    "test_nodeid": "tests/integration/test_transfer.py::test_daily_limit_is_enforced"
+  },
+  {
+    "id": "EV-009",
+    "scenario": "unknown_beneficiary",
+    "expected": "PERMISSION_DENIED",
+    "test_nodeid": "tests/integration/test_transfer.py::test_unknown_beneficiary_is_denied"
+  },
+  {
+    "id": "EV-010",
+    "scenario": "inactive_source_account",
+    "expected": "SOURCE_ACCOUNT_INACTIVE",
+    "test_nodeid": "tests/integration/test_transfer.py::test_inactive_account_is_rejected"
+  },
+  {
+    "id": "EV-011",
+    "scenario": "transfer_requires_confirmation",
+    "expected": "approval_required and no balance mutation",
+    "test_nodeid": "tests/integration/test_transfer.py::test_transfer_request_creates_pending_approval_without_moving_money"
+  },
+  {
+    "id": "EV-012",
+    "scenario": "rejected_adk_confirmation",
+    "expected": "tool execution rejected",
+    "test_nodeid": "tests/integration/test_adk_tools.py::test_adk_rejected_confirmation_does_not_invoke_sensitive_tool"
+  },
+  {
+    "id": "EV-013",
+    "scenario": "expired_approval",
+    "expected": "APPROVAL_EXPIRED",
+    "test_nodeid": "tests/unit/test_approval_and_storage.py::test_approval_rejects_expired_request"
+  },
+  {
+    "id": "EV-014",
+    "scenario": "modified_approval_details",
+    "expected": "APPROVAL_MODIFIED",
+    "test_nodeid": "tests/unit/test_approval_and_storage.py::test_approval_rejects_modified_details"
+  },
+  {
+    "id": "EV-015",
+    "scenario": "duplicate_transfer_request",
+    "expected": "DUPLICATE_REQUEST",
+    "test_nodeid": "tests/integration/test_transfer.py::test_duplicate_completed_request_is_rejected"
+  },
+  {
+    "id": "EV-016",
+    "scenario": "cross_customer_transfer_access",
+    "expected": "PERMISSION_DENIED",
+    "test_nodeid": "tests/integration/test_transfer.py::test_cross_customer_source_account_is_denied"
+  },
+  {
+    "id": "EV-017",
+    "scenario": "prompt_injection_boundary",
+    "expected": "untrusted input and policy bypass refusal instructions",
+    "test_nodeid": "tests/security/test_agent_prompt.py::test_prompt_treats_customer_instructions_as_untrusted"
+  },
+  {
+    "id": "EV-018",
+    "scenario": "hallucinated_success_boundary",
+    "expected": "verified tool output required",
+    "test_nodeid": "tests/security/test_agent_prompt.py::test_prompt_prevents_unverified_success_claims"
+  },
+  {
+    "id": "EV-019",
+    "scenario": "corrupted_json",
+    "expected": "CORRUPTED_JSON",
+    "test_nodeid": "tests/unit/test_approval_and_storage.py::test_json_store_reports_malformed_json"
+  },
+  {
+    "id": "EV-020",
+    "scenario": "interrupted_transfer_write_recovery",
+    "expected": "prepared journal redone once",
+    "test_nodeid": "tests/integration/test_recovery.py::test_prepared_transfer_is_redone_exactly_once_after_partial_write"
+  },
+  {
+    "id": "EV-021",
+    "scenario": "repeated_bill_payment",
+    "expected": "second payment rejected",
+    "test_nodeid": "tests/integration/test_bill_payment.py::test_bill_payment_replay_is_rejected"
+  },
+  {
+    "id": "EV-022",
+    "scenario": "unauthorized_read_tool_invocation",
+    "expected": "cross-customer account denied",
+    "test_nodeid": "tests/integration/test_bill_payment.py::test_foreign_bill_cannot_be_requested"
+  }
 ]

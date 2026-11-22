@@ -21,3 +21,12 @@ class ApprovalManager:
         if row["fingerprint"]!=self.fingerprint(exact_details): raise ToolValidationError("APPROVAL_MODIFIED","Approval details do not match")
         row["status"]="approved"; row["approved_at"]=datetime.now(timezone.utc).isoformat()
         self.repo.save_all(rows); return row
+
+    def consume(self, approval_id: str) -> None:
+        rows=self.repo.list()
+        row=next((r for r in rows if r["approval_id"]==approval_id),None)
+        if not row or row.get("status")!="approved":
+            raise ToolValidationError("APPROVAL_REPLAY","Approval is not in an executable state")
+        row["status"]="consumed"
+        row["consumed_at"]=datetime.now(timezone.utc).isoformat()
+        self.repo.save_all(rows)

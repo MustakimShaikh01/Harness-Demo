@@ -10,3 +10,5 @@ __pycache__/
 htmlcov/
 *.bak
 *.lock
+!rust/audit-verifier/Cargo.lock
+**/target/

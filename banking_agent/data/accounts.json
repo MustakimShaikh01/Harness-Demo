@@ -25,5 +25,14 @@
     "currency": "INR",
     "status": "active",
     "account_type": "savings"
+  },
+  {
+    "account_id": "acct_demo_004",
+    "customer_id": "cust_demo_002",
+    "name": "Meera Iyer",
+    "balance": "18000.00",
+    "currency": "INR",
+    "status": "active",
+    "account_type": "checking"
   }
 ]

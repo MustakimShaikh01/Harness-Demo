@@ -73,6 +73,15 @@ def test_repeated_pending_request_returns_same_approval(tmp_path):
     assert first["approval_id"] == second["approval_id"]
 
 
+def test_transfer_request_creates_pending_approval_without_moving_money(tmp_path):
+    store, service = build_service(tmp_path)
+
+    result = service.request("acct_demo_001", "ben_1", Decimal("50"), "req-approval")
+
+    assert result["status"] == "approval_required"
+    assert store.read("accounts.json")[0]["balance"] == "100000.00"
+
+
 @pytest.mark.parametrize(
     ("amount", "expected_reason"),
     [(Decimal("25001"), "ABOVE_MAXIMUM")],
@@ -97,12 +106,14 @@ def test_daily_limit_is_enforced(tmp_path):
         service.request("acct_demo_001", "ben_1", Decimal("100"), "req-daily")
 
 
-def test_inactive_account_and_insufficient_funds_are_rejected(tmp_path):
-    _, inactive_service = build_service(tmp_path / "inactive", status="inactive")
+def test_inactive_account_is_rejected(tmp_path):
+    _, inactive_service = build_service(tmp_path, status="inactive")
     with pytest.raises(ToolValidationError, match="SOURCE_ACCOUNT_INACTIVE"):
         inactive_service.request("acct_demo_001", "ben_1", Decimal("50"), "req-inactive")
 
-    _, low_balance_service = build_service(tmp_path / "low", balance="50.00")
+
+def test_insufficient_funds_are_rejected(tmp_path):
+    _, low_balance_service = build_service(tmp_path, balance="50.00")
     with pytest.raises(ToolValidationError) as error:
         low_balance_service.request("acct_demo_001", "ben_1", Decimal("100"), "req-funds")
     assert error.value.code == "INSUFFICIENT_FUNDS"
@@ -113,6 +124,13 @@ def test_cross_customer_source_account_is_denied(tmp_path):
 
     with pytest.raises(PermissionError):
         service.request("acct_demo_001", "ben_1", Decimal("50"), "req-owner")
+
+
+def test_unknown_beneficiary_is_denied(tmp_path):
+    _, service = build_service(tmp_path)
+
+    with pytest.raises(PermissionError):
+        service.request("acct_demo_001", "ben_unknown", Decimal("50"), "req-beneficiary")
 
 
 def test_modified_approval_does_not_change_balances(tmp_path):

@@ -11,6 +11,8 @@ def main() -> None:
          "balance": "25000.00", "currency": "INR", "status": "active", "account_type": "checking"},
         {"account_id": "acct_demo_003", "customer_id": "cust_demo_002", "name": "Meera Iyer",
          "balance": "50000.00", "currency": "INR", "status": "active", "account_type": "savings"},
+        {"account_id": "acct_demo_004", "customer_id": "cust_demo_002", "name": "Meera Iyer",
+         "balance": "18000.00", "currency": "INR", "status": "active", "account_type": "checking"},
     ]
     beneficiaries = [
         {"beneficiary_id": "ben_demo_001", "customer_id": "cust_demo_001", "name": "Family Savings",
