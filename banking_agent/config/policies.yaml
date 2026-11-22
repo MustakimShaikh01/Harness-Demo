@@ -1,0 +1,12 @@
+transfer:
+  min_amount: "1.00"
+  max_amount: "25000.00"
+  daily_limit: "50000.00"
+  require_approval: true
+  require_beneficiary: true
+bill:
+  require_approval: true
+approval:
+  ttl_seconds: 300
+fraud:
+  large_transfer_threshold: "10000.00"

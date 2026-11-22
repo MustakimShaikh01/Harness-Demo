@@ -1,0 +1,18 @@
+[
+  {
+    "beneficiary_id": "ben_demo_001",
+    "customer_id": "cust_demo_001",
+    "name": "Family Savings",
+    "account_id": "acct_demo_002",
+    "status": "active",
+    "verified": true
+  },
+  {
+    "beneficiary_id": "ben_demo_002",
+    "customer_id": "cust_demo_001",
+    "name": "Utility Partner",
+    "account_id": "acct_demo_003",
+    "status": "active",
+    "verified": true
+  }
+]

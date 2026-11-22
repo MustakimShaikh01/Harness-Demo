@@ -1,0 +1,6 @@
+google-adk==1.39.1
+pydantic==2.12.5
+python-dotenv==1.0.0
+PyYAML==6.0.3
+pytest==8.4.2
+pytest-cov==6.3.0

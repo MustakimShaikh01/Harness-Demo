@@ -1,0 +1,12 @@
+[
+  {
+    "bill_id": "bill_demo_001",
+    "customer_id": "cust_demo_001",
+    "account_id": "acct_demo_001",
+    "biller": "Metro Electric",
+    "amount": "1850.00",
+    "currency": "INR",
+    "due_date": "2026-11-30",
+    "status": "pending"
+  }
+]

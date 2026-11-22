@@ -1,0 +1,12 @@
+[
+  {
+    "transaction_id": "tx_seed_001",
+    "account_id": "acct_demo_001",
+    "amount": "2500.00",
+    "currency": "INR",
+    "type": "debit",
+    "status": "completed",
+    "date": "2026-11-20T10:00:00+00:00",
+    "description": "Demo grocery payment"
+  }
+]

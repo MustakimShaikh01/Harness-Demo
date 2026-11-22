@@ -1,0 +1,29 @@
+[
+  {
+    "account_id": "acct_demo_001",
+    "customer_id": "cust_demo_001",
+    "name": "Aarav Sharma",
+    "balance": "100000.00",
+    "currency": "INR",
+    "status": "active",
+    "account_type": "savings"
+  },
+  {
+    "account_id": "acct_demo_002",
+    "customer_id": "cust_demo_001",
+    "name": "Aarav Sharma",
+    "balance": "25000.00",
+    "currency": "INR",
+    "status": "active",
+    "account_type": "checking"
+  },
+  {
+    "account_id": "acct_demo_003",
+    "customer_id": "cust_demo_002",
+    "name": "Meera Iyer",
+    "balance": "50000.00",
+    "currency": "INR",
+    "status": "active",
+    "account_type": "savings"
+  }
+]

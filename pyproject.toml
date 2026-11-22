@@ -1,0 +1,22 @@
+[project]
+name = "bankguard"
+version = "1.0.0"
+description = "A JSON-backed simulated banking agent demonstrating harness engineering with Google ADK"
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "MIT" }
+dependencies = [
+    "google-adk==1.39.1",
+    "pydantic==2.12.5",
+    "python-dotenv==1.0.0",
+    "PyYAML==6.0.3",
+]
+
+[project.optional-dependencies]
+test = ["pytest==8.4.2", "pytest-cov==6.3.0"]
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+addopts = "-q"
+testpaths = ["tests"]
+pythonpath = ["."]
