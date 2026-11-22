@@ -1,81 +1,218 @@
-# BankGuard — AI Banking Agent Harness
+# BankGuard
 
-> A portfolio project demonstrating how to put deterministic controls around an LLM agent. The model interprets requests; Python tools enforce ownership, policy and approval before any simulated financial operation.
+BankGuard is a simulated banking assistant built to demonstrate how to place deterministic controls around an AI agent. The model interprets a request and selects a tool; application code validates identity, ownership, policy and approval before any sensitive operation can execute.
 
-![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
-![Google ADK](https://img.shields.io/badge/Agent%20framework-Google%20ADK-4285F4?logo=google)
-![Storage](https://img.shields.io/badge/Storage-JSON%20files-6B7280)
-![Tests](https://img.shields.io/github/actions/workflow/status/MustakimShaikh01/Harness-Demo/tests.yml?branch=main&label=tests)
-![Status](https://img.shields.io/badge/status-demo%20project-orange)
+All accounts, customers and transactions in this repository are fictional. The application does not connect to a bank, move real money or provide financial advice. It is a learning and portfolio project, not production banking software.
 
-**All accounts and banking activity are fictional. No real money is moved.** This project is for learning and demonstration, not production banking or financial advice.
+## Project overview
 
-## What it demonstrates
+BankGuard combines:
 
-- Google ADK `LlmAgent` with Gemini and function tools.
-- Practical read tools for accounts, balances, transaction history/search, beneficiaries and bills.
-- Beneficiary registration with account validation and duplicate prevention.
-- Sensitive operations split into request and execution stages.
-- ADK Web confirmation prompts on transfer and bill-payment execution calls.
-- Independent Python authorization, validation and policy checks.
-- Decimal-based INR calculations, idempotency records, JSON persistence and audit events.
-- A small Rust CLI that independently verifies the Python audit log's SHA-256 hash chain.
-- Local unit, integration and security tests that do not call Gemini.
+- Python 3.11+ and Google Agent Development Kit (ADK) for the agent, tools and application harness.
+- Gemini for natural-language interpretation. Live model use is optional for local tests.
+- JSON files for fictional demo data and application persistence.
+- Rust for an independent command-line verifier of the Python audit log's hash chain.
+- Pytest and GitHub Actions for automated checks.
+
+The guiding rule is: **the model may propose an action, but deterministic application code decides whether it is allowed and whether it succeeded.**
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    U[Customer] --> W[Google ADK Web]
-    W --> R[ADK Runtime and Session]
+    U[Customer] --> W[ADK Web]
+    W --> R[ADK Runtime]
     R --> A[Gemini Agent]
-    A -->|read request| T[Function Tools]
-    A -->|proposed sensitive action| T
-    T --> V[Validation and Authorization]
-    V --> P[Deterministic Policy Engine]
-    P -->|read operation| S[Banking Services]
-    P -->|financial action| H[ADK UI Confirmation]
-    H -->|confirmed call| AP[Approval and Idempotency]
-    AP --> S
-    S --> J[JSON Store and Journal]
-    S --> O[Audit Events and Logs]
-    O -. integrity check .-> RV[Rust Audit Verifier]
-    J --> T
-    O --> T
+    A --> T[Python Function Tools]
+    T --> V[Input Validation and Ownership]
+    V --> P[Deterministic Policy and Approval]
+    P --> S[Banking Services]
+    S --> D[JSON Storage and Recovery Journals]
+    S --> L[Hash-Chained Audit Log]
+    L -. offline verification .-> X[Rust Audit Verifier]
     T --> A
     A --> W
 ```
 
-The model never opens or writes JSON files. A successful tool result—not model text—is the evidence for an operation's outcome. UI confirmation is an additional harness gate; services still recheck ownership, limits, balance, approval details and replay status.
+The model does not read or write the data files directly. Sensitive actions use a request-then-execute flow: the application validates the request and creates an approval; ADK asks the user to confirm the execution call; the service rechecks the approval and business rules before committing the simulated operation.
 
-### Transfer sequence
+### Transfer flow
 
 ```mermaid
 sequenceDiagram
     actor Customer
-    participant Agent as Gemini / ADK
-    participant Tool as Transfer Tool
-    participant Harness as Authorization + Policy
+    participant Agent as Gemini and ADK
+    participant Tool as Python Tool
+    participant Harness as Validation and Policy
     participant UI as ADK Confirmation
     participant Store as JSON Store
 
-    Customer->>Agent: Request transfer
+    Customer->>Agent: Request a transfer
     Agent->>Tool: request_transfer(details)
-    Tool->>Harness: Validate identity, beneficiary, amount, limits
-    Harness-->>Tool: Allow or structured denial
-    Tool->>Store: Persist idempotency request and exact approval fingerprint
-    Tool-->>Agent: Approval ID and exact details
-    Agent-->>Customer: Present transfer details
-    Customer->>UI: Confirm tool execution
-    UI->>Tool: Execute confirmed transfer
-    Tool->>Harness: Revalidate approval, policy, ownership and replay
-    Harness->>Store: Journal, update balances and transactions
-    Store-->>Tool: Persisted result
-    Tool-->>Agent: Verified result
-    Agent-->>Customer: Report result
+    Tool->>Harness: Check identity, ownership, beneficiary and limits
+    Harness-->>Tool: Denial or approval details
+    Tool->>Store: Save pending approval and idempotency record
+    Tool-->>Customer: Show exact transfer details
+    Customer->>UI: Confirm sensitive tool execution
+    UI->>Tool: execute_confirmed_transfer
+    Tool->>Harness: Recheck approval, policy and replay status
+    Harness->>Store: Journal and persist simulated transfer
+    Store-->>Tool: Persisted operation result
+    Tool-->>Agent: Structured result
+    Agent-->>Customer: Explain the verified outcome
 ```
 
-### Data model
+## Capabilities
+
+| Area | Included behavior |
+|---|---|
+| Account and transaction reads | Read owned accounts, balances, transaction history and search results |
+| Beneficiaries | List and register eligible fictional accounts; prevent duplicate registration |
+| Transfers | Check policy and ownership, request approval, confirm execution and record paired transactions |
+| Bill payments | Bind approval to a specific pending bill and its owned source account |
+| Deterministic controls | Validate arguments, use a configured demo identity, enforce policy and recheck approval details |
+| Persistence | Use JSON files with locks, atomic replacement, backups and redo journals for supported operations |
+| Audit integrity | Chain audit events with SHA-256; verify them offline with the Rust CLI |
+| Tests and evaluation | Run local tests and mapped scenario evaluations without calling Gemini |
+
+### Tool catalog
+
+| Tool | Purpose | Effect |
+|---|---|---|
+| `get_balance` | Read an owned account balance | Read-only |
+| `get_account`, `get_account_summary` | Read owned account information | Read-only |
+| `get_transaction_history`, `search_transaction` | Read or filter owned-account transactions | Read-only |
+| `list_beneficiaries` | List the active demo customer's beneficiaries | Read-only |
+| `add_beneficiary` | Register an eligible fictional recipient | Requires ADK confirmation |
+| `list_pending_bills`, `get_bill_details` | Read the active customer's bills | Read-only |
+| `assess_transfer_risk` | Return deterministic risk indicators | Read-only |
+| `request_transfer` | Validate a transfer and create a pending approval | Does not move money |
+| `execute_confirmed_transfer` | Revalidate and execute the simulated transfer | Requires ADK confirmation |
+| `request_bill_payment` | Create approval for an exact pending bill | Does not move money |
+| `execute_confirmed_bill_payment` | Revalidate and pay the simulated bill | Requires ADK confirmation |
+
+## Get started
+
+### Requirements
+
+- Python 3.11 or newer
+- A Google Gemini API key only for live agent interaction
+- Rust stable and Cargo only for the optional Rust verifier
+
+The commands below assume macOS or Linux and a clone of this repository.
+
+### Install Python dependencies
+
+```bash
+git clone https://github.com/MustakimShaikh01/Harness-Demo.git
+cd Harness-Demo
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+```
+
+Open `.env` in a local editor and set `GOOGLE_API_KEY` if you want to use the live Gemini agent. Keep that key private; do not commit `.env` or paste the key into source code, screenshots or issue reports. Without a key, you can still run the local test and evaluation suites.
+
+The default model is `gemini-flash-lite-latest` to keep demo inference cost-conscious. Model availability depends on the API key and provider; `BANKGUARD_MODEL` can select another model supported by your account. Live model requests can incur charges.
+
+### Initialize demo data
+
+```bash
+python scripts/seed_demo_data.py
+```
+
+This resets the demo JSON data to the fictional seed state and overwrites demo activity. Skip it if you want to preserve your existing local demo data.
+
+### Start the agent
+
+From the repository root, with the virtual environment active:
+
+```bash
+adk web --no_use_local_storage .
+```
+
+Open the local address printed by ADK and select the `banking_agent` application. Conversation state is held in memory and is lost when the server stops.
+
+Try these prompts:
+
+```text
+Show my balance for acct_demo_001
+Summarize acct_demo_001
+Find transaction tx_seed_001 in acct_demo_001
+Show my pending bills
+Request a transfer of INR 500 from acct_demo_001 to ben_demo_001
+```
+
+For beneficiary registration, transfers and bill payments, review the details and use the ADK confirmation action when prompted. A conversational reply such as “yes” does not replace the confirmation step.
+
+## Demo records
+
+The default simulated customer is `cust_demo_001`, selected by trusted application configuration. This is a demo identity, not user authentication.
+
+| Record | Identifier | Seed details |
+|---|---|---|
+| Savings account | `acct_demo_001` | INR 100,000.00 |
+| Checking account | `acct_demo_002` | INR 25,000.00 |
+| Other customer's account | `acct_demo_003` | Used to demonstrate access denial |
+| Additional recipient account | `acct_demo_004` | Used to demonstrate beneficiary registration |
+| Beneficiary | `ben_demo_001` | Family Savings, linked to `acct_demo_002` |
+| Pending bill | `bill_demo_001` | Metro Electric, INR 1,850.00, paid from `acct_demo_001` |
+
+## Run checks
+
+The Python tests and evaluation scenarios use local fixtures and do not call Gemini:
+
+```bash
+pytest -q
+python banking_agent/evaluation/evaluation_runner.py
+```
+
+Run the optional Rust verifier checks from the repository root:
+
+```bash
+cargo fmt --manifest-path rust/audit-verifier/Cargo.toml -- --check
+cargo clippy --locked --manifest-path rust/audit-verifier/Cargo.toml --all-targets -- -D warnings
+cargo test --locked --manifest-path rust/audit-verifier/Cargo.toml
+```
+
+To make a single optional live model request, configure `GOOGLE_API_KEY` and run:
+
+```bash
+python scripts/smoke_agent.py
+```
+
+This smoke test sends a billable request. It is separate from the local test suite.
+
+## Rust audit verifier
+
+The Python audit logger links each event to the previous event using SHA-256. The Rust CLI independently verifies a log without changing it:
+
+```bash
+cargo run --manifest-path rust/audit-verifier/Cargo.toml -- verify banking_agent/data/audit_logs.json
+```
+
+On success, the command prints the verified event count and current `head_hash`. A new or reset demo log may contain zero events; that is a valid empty chain.
+
+The optional `--expected-head` argument compares the log with a 64-character hash checkpoint saved separately from a trusted earlier run. It can detect that the log was truncated at the end if the checkpoint was preserved. The verifier does not create or protect the checkpoint; an expected hash must be a real hash, not example text. See [audit and observability](docs/OBSERVABILITY.md) for details.
+
+The Rust and Python implementations share test fixtures. For consistent hashes, audit events support strings, booleans, nulls, arrays, objects and safe integers. Floating-point values and integers outside the safe cross-language range are rejected; monetary values should be represented as decimal strings.
+
+## Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `GOOGLE_API_KEY` | Unset | Gemini API key; needed only for live model calls |
+| `BANKGUARD_MODEL` | `gemini-flash-lite-latest` | Gemini model name |
+| `BANKGUARD_ENV` | `development` | Demo environment label |
+| `BANKGUARD_DATA_DIR` | `banking_agent/data` | Directory containing JSON persistence |
+| `BANKGUARD_DEMO_CUSTOMER` | `cust_demo_001` | Trusted simulated customer identity |
+| `BANKGUARD_LOG_LEVEL` | `INFO` | Application log level |
+| `BANKGUARD_MAX_OUTPUT_TOKENS` | `384` | Model output cap; accepted range is 64 to 2048 |
+
+Transfer policy is configured in `banking_agent/config/policies.yaml`.
+
+## Data model
 
 ```mermaid
 erDiagram
@@ -98,7 +235,6 @@ erDiagram
         string balance_decimal_string
         string currency
         string status
-        string account_type
     }
     BENEFICIARY {
         string beneficiary_id
@@ -119,13 +255,11 @@ erDiagram
         string amount_decimal_string
         string type
         string status
-        string timestamp_utc
     }
     APPROVAL {
         string approval_id
         string fingerprint
         string status
-        string expires_at_utc
     }
     IDEMPOTENCY_REQUEST {
         string request_id
@@ -137,169 +271,51 @@ erDiagram
         string status
     }
     AUDIT_EVENT {
-        string timestamp_utc
         string operation
-        string result
         string previous_hash
         string event_hash
     }
 ```
 
-See [architecture and persistence notes](docs/ARCHITECTURE.md) and [JSON data model](docs/DATA_MODEL.md) for field-level details.
-
-## Tool catalog
-
-| Tool | Purpose | Access |
-|---|---|---|
-| `get_balance` | Read available balance | Read-only |
-| `get_account` / `get_account_summary` | Read owned-account details | Read-only |
-| `get_transaction_history` / `search_transaction` | Read/filter owned-account activity | Read-only |
-| `list_beneficiaries` | List active customer's registered beneficiaries | Read-only |
-| `add_beneficiary` | Register an active demo account and prevent duplicates | Sensitive; ADK confirmation |
-| `list_pending_bills` / `get_bill_details` | Read the active customer's bills | Read-only |
-| `assess_transfer_risk` | Return deterministic risk indicators | Read-only |
-| `request_transfer` | Validate request and create pending approval | No money moved |
-| `execute_confirmed_transfer` | Execute after ADK UI confirmation and fresh checks | Sensitive |
-| `request_bill_payment` | Create approval for exact pending bill details | No money moved |
-| `execute_confirmed_bill_payment` | Pay from the bill's specified owned account after confirmation | Sensitive |
-
-## Quick start
-
-### 1. Requirements
-
-- Python 3.11+
-- A Google Gemini API key for live agent interaction
-- macOS or Linux with Python 3.11+
-- Rust stable/Cargo only if you want to build and run the optional audit verifier
-
-### 2. Install
-
-```bash
-git clone <your-fork-or-repository-url>
-cd bankguard
-python3.11 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-python -m pip install -r requirements.txt
-cp .env.example .env               # Windows PowerShell: Copy-Item .env.example .env
-```
-
-Edit `.env` locally and set `GOOGLE_API_KEY`. **Never commit `.env` or paste its key into README, screenshots, issue trackers, or source files.** The default model is `gemini-flash-lite-latest` to keep demo inference inexpensive; set `BANKGUARD_MODEL` to another model available to your API key if needed.
-
-### 3. Seed fictional demo data
-
-```bash
-python scripts/seed_demo_data.py
-```
-
-The seed script resets the demo JSON files. Do not run it if you want to preserve demo activity.
-
-### 4. Launch ADK Web
-
-From the repository root:
-
-```bash
-adk web --no_use_local_storage .
-```
-
-Open the local URL printed by ADK and select the `banking_agent` app. Local ADK session context is in memory only and is lost when the server exits. Try:
-
-- `Show my balance for acct_demo_001`
-- `Summarize acct_demo_001`
-- `Find transaction tx_seed_001 in acct_demo_001`
-- `Show my pending bills`
-- `Request a transfer of INR 500 from acct_demo_001 to ben_demo_001`
-
-For transfers and bill payments, review and approve the ADK tool confirmation prompt. A conversational “yes” alone is not the execution confirmation.
-
-## Demo identity and data
-
-The default simulated customer is `cust_demo_001`, selected through trusted app configuration (`BANKGUARD_DEMO_CUSTOMER`).
-
-| Demo record | ID | Details |
-|---|---|---|
-| Savings account | `acct_demo_001` | ₹100,000.00 |
-| Checking account | `acct_demo_002` | ₹25,000.00 |
-| Other demo customer account | `acct_demo_003` | Cross-customer access is denied |
-| Additional recipient account | `acct_demo_004` | Use to demonstrate adding a beneficiary |
-| Beneficiary | `ben_demo_001` | Family Savings, linked to `acct_demo_002` |
-| Pending bill | `bill_demo_001` | Metro Electric, ₹1,850.00, pays from `acct_demo_001` |
-
-This identity is a **demo boundary**, not login, authentication, MFA or production authorization.
-
-## Cost-conscious testing
-
-The evaluation runner executes the scenario-to-test mappings in `banking_agent/evaluation/test_cases.json` and reports individual outcomes. Local tests do not call the model or incur inference charges:
-
-```bash
-pytest -q
-python banking_agent/evaluation/evaluation_runner.py
-```
-
-An optional live smoke test makes **one short Gemini request** and is billable:
-
-```bash
-python scripts/smoke_agent.py
-```
-
-The agent defaults to a Flash Lite model, low temperature, and a 384-token output cap. Local tests use service and storage fixtures instead of repeating paid LLM requests. If the provider returns 503, wait and retry or select another model available to your key.
-
-## Configuration
-
-| Variable | Default | Description |
-|---|---|---|
-| `GOOGLE_API_KEY` | unset | Gemini API key; required only for live model calls |
-| `BANKGUARD_MODEL` | `gemini-flash-lite-latest` | Gemini model name |
-| `BANKGUARD_ENV` | `development` | Demo environment label |
-| `BANKGUARD_DATA_DIR` | `banking_agent/data` | Directory holding JSON persistence |
-| `BANKGUARD_DEMO_CUSTOMER` | `cust_demo_001` | Trusted simulated identity |
-| `BANKGUARD_LOG_LEVEL` | `INFO` | Application log level |
-| `BANKGUARD_MAX_OUTPUT_TOKENS` | `384` | Model output cap (accepted range: 64–2048) |
-
-Transfer policy lives in `banking_agent/config/policies.yaml`.
-
-## Project layout
+## Repository layout
 
 ```text
-bankguard/
-├── banking_agent/
-│   ├── agent.py                 # ADK agent, tool registration, token budget
-│   ├── config/                  # Runtime settings and demo policy
-│   ├── prompts/                # Concise agent behavior instructions
-│   ├── tools/                   # ADK function tools
-│   ├── harness/                 # Validation, approval, policy, audit
-│   ├── services/                # Banking business logic
-│   ├── storage/                 # Atomic JSON persistence and repositories
-│   ├── data/                    # Fictional seed data and runtime JSON
-│   └── evaluation/              # Deterministic scenario catalog/runner
-├── docs/                        # Architecture, security, tests, demo guide
-├── rust/audit-verifier/         # Optional Rust CLI for audit-chain verification
-├── scripts/                     # Seed/reset, checks, optional live smoke test
-└── tests/                       # Unit, integration, security and evaluation
+banking_agent/
+  agent.py                 ADK agent setup and tool registration
+  config/                  Application settings and transfer policy
+  prompts/                 Agent instructions
+  tools/                   ADK function tools
+  harness/                 Validation, approvals, policy and audit integrity
+  services/                Deterministic banking operations
+  storage/                 JSON store, repositories and recovery
+  data/                    Fictional seed and local runtime data
+  evaluation/              Scenario catalog and evaluation runner
+rust/
+  audit-verifier/           Standalone Rust audit-chain CLI
+docs/                       Architecture, security, data and demo guides
+scripts/                    Seed, recovery, checks and live smoke test
+tests/                      Unit, integration, security and evaluation tests
 ```
 
-## Trust and persistence limitations
+## Security and project limitations
 
-- Tools obtain customer scope from application configuration, never from a model-supplied customer ID.
-- ADK `FunctionTool(require_confirmation=True)` gates sensitive execution in the interactive ADK confirmation flow.
-- Services revalidate the exact approval fingerprint, expiry, ownership, balance and policies before execution.
-- Money uses `Decimal`; JSON encodes amounts as decimal strings.
-- Writes use locks, temporary files, `fsync`, atomic replacement and a previous-file backup.
-- Audit events are linked by SHA-256 hashes. Run `cargo run --manifest-path rust/audit-verifier/Cargo.toml -- verify banking_agent/data/audit_logs.json` to check the chain. For optional tail-truncation detection, pass a real, previously saved `--expected-head` hash; see [audit and observability](docs/OBSERVABILITY.md). A fully rewritten log is still not tamper-proof without an external signature or anchor.
-- Transfer/bill journals store redo snapshots. After an interrupted operation, run `python scripts/recover_demo_data.py` to safely reapply approved prepared entries; this does **not** make JSON files a transactional database.
-- Local JSON storage is for a single-user demo. It is not suitable for concurrent production workloads, multiple hosts, regulatory use or real financial data.
+- Customer scope comes from application configuration, not from model-supplied tool arguments.
+- Sensitive tools use ADK confirmation and then recheck ownership, policy, balance, approval details and replay status.
+- Money calculations use `Decimal`; JSON values for amounts are decimal strings.
+- JSON persistence includes locks, atomic file replacement and backups. Redo journals help recover supported interrupted operations, but JSON files are not a transactional database.
+- Hash chains detect changed events when verified, but a person who can rewrite the complete file can recalculate the chain. Stronger tamper evidence requires a checkpoint, signature or log anchor protected separately.
+- The project has no production login, MFA, real beneficiary verification, bank API, real payment settlement, multi-host database, HSM or compliance controls.
+- The configured demo identity is not authentication. Anyone with access to the local UI can act as that simulated customer.
 
-Read [security assumptions](docs/SECURITY.md) before demonstrating sensitive workflows.
+Do not use this project with real banking or personal data.
 
 ## Documentation
 
-- [Architecture and flow](docs/ARCHITECTURE.md)
-- [Data model](docs/DATA_MODEL.md)
-- [Audit and observability examples](docs/OBSERVABILITY.md)
+- [Architecture and control flow](docs/ARCHITECTURE.md)
+- [Data model and persistence](docs/DATA_MODEL.md)
+- [Audit and observability](docs/OBSERVABILITY.md)
+- [Security assumptions and limitations](docs/SECURITY.md)
 - [Harness engineering](docs/HARNESS_ENGINEERING.md)
-- [Threat model and demo limitations](docs/SECURITY.md)
-- [Test and evaluation guide](docs/TESTING.md)
-- [10-minute demo script](docs/DEMO_GUIDE.md)
-
-## Roadmap / honest scope
-
-This is a deliberately constrained simulated-banking harness. It does not implement production login, MFA, real beneficiary verification, multi-process database transactions, a live fraud model, an external bank API, or real bill settlement. Additions should preserve the “LLM proposes, deterministic harness decides” boundary.
+- [Testing and evaluations](docs/TESTING.md)
+- [10-minute demonstration guide](docs/DEMO_GUIDE.md)
+- [Contributing](CONTRIBUTING.md)
